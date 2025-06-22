@@ -1,0 +1,24 @@
+# YOLO model weights
+*.pt
+
+# Training outputs
+runs/
+
+# Cache and metadata
+*.cache
+*.log
+
+# Python virtual environments
+venv/
+env/
+cs5100/
+cs5100python/
+
+# Jupyter and Python backup files
+*.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# OS/system files
+.DS_Store
+Thumbs.db
