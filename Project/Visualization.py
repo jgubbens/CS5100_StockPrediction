@@ -89,6 +89,7 @@ def update_graph(n):
     levels_5m = sr_manager_5m.get_levels()
     levels_4h = sr_manager_4h.get_levels()
 
+
     return make_candlestick_figure(
         partial_5m, partial_4h,
         levels_5m['supports'], levels_5m['resistances'],

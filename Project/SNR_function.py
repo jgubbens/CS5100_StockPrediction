@@ -11,8 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'p
 
 from pattern_recognition import SupportResistanceCNN
 
-
-
 class SupportResistanceManager:
 
     def __init__(self, max_levels=5,
@@ -36,7 +34,7 @@ class SupportResistanceManager:
 
         self.supports = []
         self.resistances = []
-
+    
     def calculate_levels(self, df):
         if len(df) < 300:
             print("Not enough candlesticks for model input — skipping prediction.")
@@ -44,7 +42,10 @@ class SupportResistanceManager:
             self.resistances = []
             return
         df_norm = (df - df.mean()) / df.std()
-        features = df_norm[['open', 'high', 'low', 'close', 'volume']].values.T
+        features = df_norm[['open', 'high', 'low', 'close', 'volume']].iloc[-300:]
+        features.dropna()
+        features = features.astype(np.float32).values.T
+
         x = torch.tensor(features[:, -300:], dtype=torch.float32).unsqueeze(0)
 
         self.model.eval()
