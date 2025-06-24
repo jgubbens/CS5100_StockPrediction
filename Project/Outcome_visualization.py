@@ -27,7 +27,7 @@ sr_manager_4h = SupportResistanceManager()
 position = 0
 entry_price = None
 entry_index = None
-entry_points = []  # entry point(index, price, direction)
+entry_points = [] # entry point(index, price, direction)
 last_4h_timestamp = None
 last_4h_onehot = [0, 0, 0, 0]
 
