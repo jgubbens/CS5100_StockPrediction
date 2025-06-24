@@ -27,9 +27,9 @@ def discretize_state(state, bins=[10, 10, 10]):
 q_table = {}
 q_update = {}
 gamma = 0.9
-episodes = 5000
+episodes = 3000
 epsilon = 1
-decay_rate = 0.9995
+decay_rate = 0.999
 
 for episode in range(episodes):
     state = env.reset()
@@ -72,9 +72,10 @@ for episode in range(episodes):
             f"Episode {episode + 1:>4} | "
             f"Balance: {info['balance']:.2f} | "
             f"Total Reward: {total_reward:.2f} | "
+            f"Average Reward: {total_reward:.2f} | "
             f"Epsilon: {epsilon:.4f} | "
-            f"Trades: {trade_count:>3} | "
-            f"Avg Profit/Trade: {avg_profit:.4f}"
+            # f"Trades: {trade_count:>3} | "
+            # f"Avg Profit/Trade: {avg_profit:.4f}"
         )
 
 

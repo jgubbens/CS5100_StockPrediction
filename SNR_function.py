@@ -1,6 +1,14 @@
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
+import torch
+import sys
+import os
+
+# Add the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.', 'pattern_recognition')))
+
+from pattern_recognition import SupportResistanceCNN
 
 class SupportResistanceManager:
 
@@ -20,9 +28,43 @@ class SupportResistanceManager:
         self.peak_rank_width = peak_rank_width
         self.resistance_min_pivot_rank = resistance_min_pivot_rank
 
+        self.model = SupportResistanceCNN(sequence_length=300)
+        self.model.load_state_dict(torch.load("./pattern_recognition/support_resistance_cnn_300candlesticks.pt", map_location=torch.device("cpu")))
+
         self.supports = []
         self.resistances = []
+    
+    def calculate_levels(self, df):
+        if len(df) < 300:
+            print("Not enough candlesticks for model input — skipping prediction.")
+            self.supports = []
+            self.resistances = []
+            return
+        df_norm = (df - df.mean()) / df.std()
+        features = df_norm[['open', 'high', 'low', 'close', 'volume']].iloc[-300:]
+        features.dropna()
+        features = features.astype(np.float32).values.T
 
+        x = torch.tensor(features[:, -300:], dtype=torch.float32).unsqueeze(0)
+
+        self.model.eval()
+        with torch.no_grad():
+            pred_h, _ = self.model(x)
+            probs = torch.sigmoid(pred_h).squeeze(0).numpy()
+
+        levels = np.linspace(df['low'].min(), df['high'].max(), 100)
+        last_close = df['close'].iloc[-1]
+
+        support_levels = [(lvl, prob) for lvl, prob in zip(levels, probs) if lvl < last_close]
+        resistance_levels = [(lvl, prob) for lvl, prob in zip(levels, probs) if lvl >= last_close]
+
+        top_supports = sorted(support_levels, key=lambda x: x[1], reverse=True)[:self.max_levels]
+        top_resistances = sorted(resistance_levels, key=lambda x: x[1], reverse=True)[:self.max_levels]
+
+        self.supports = [lvl for lvl, _ in top_supports]
+        self.resistances = [lvl for lvl, _ in top_resistances]
+
+    '''
     def calculate_levels(self, df):
         # Strong Resistance
         strong_peaks, _ = find_peaks(df['high'], distance=self.strong_peak_distance, prominence=self.strong_peak_prominence)
@@ -95,6 +137,7 @@ class SupportResistanceManager:
 
         self.supports = final_supports[:self.max_levels] # get the five nearest resistance line
         self.resistances = final_resistances[-self.max_levels:] # get the five nearest support line
+    '''
 
     def update_levels(self, latest_candle):
         # if the price penetrate support line support will be the new resistance
@@ -157,4 +200,3 @@ class SupportResistanceManager:
     def reset_levels(self):
         self.supports = []
         self.resistances = []
-

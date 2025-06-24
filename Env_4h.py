@@ -195,9 +195,9 @@ class TradingEnv_4h(gym.Env):
     
     def _close_position(self, price):
         if self.position == 1:
-            profit = price - self.position_price
+            profit = ((price - self.position_price)/self.position_price) * self.balance * 0.1
         elif self.position == -1:
-            profit = self.position_price - price
+            profit = ((self.position_price - price)/self.position_price) * self.balance * 0.1
         else:
             profit = 0.0
 
