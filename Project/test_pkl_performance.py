@@ -3,16 +3,17 @@ from DataExtract import fetch_binanceus_ohlcv
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import os
 
 
 with open("4h_q_table.pkl", "rb") as f:
     q_table_4h = pickle.load(f)
 
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2025-06-15T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2025-06-21T00:00:00Z', end_time='2025-06-24T00:00:00Z')
 df_4h['timestamp'] = df_4h.index
 df_4h.reset_index(drop=True, inplace=True)
 
-df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-15T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-21T00:00:00Z', end_time='2025-06-24T00:00:00Z')
 df_5m['timestamp'] = df_5m.index
 df_5m.reset_index(drop=True, inplace=True)
 
@@ -24,10 +25,17 @@ def discretize_state(state, bins=[10, 10, 10, 4]):
 q_table = {}
 q_update = {}
 gamma = 0.95
-episodes = 1000
+episodes = 1
 reward_log = []
-epsilon = 1 
+epsilon = 0 
 decay_rate = 0.99
+
+if os.path.exists("5m_q_table.pkl"):
+    with open("5m_q_table.pkl", "rb") as f:
+        q_table = pickle.load(f)
+        # Also initialize q_update keys
+        for state in q_table:
+            q_update[state] = np.zeros(len(q_table[state]))
 
 
 for episode in range(episodes):
@@ -63,7 +71,7 @@ for episode in range(episodes):
     reward_log.append(total_reward)
     true_profit = info['balance'] - 100.0
 
-    if (episode + 1) % 10 == 0:
+    if (episode + 1) % 1 == 0:
         recent_rewards = reward_log[-10:]
         reward_std = np.std(recent_rewards)
         print(f"Episode {episode+1}, Final Balance: {info['balance']:.2f}, Total Reward: {total_reward:.2f}, True PnL: {true_profit:.2f}, StdDev (last 10): {reward_std:.2f}, Epsilon: {epsilon:.4f}")
@@ -79,7 +87,3 @@ plt.grid(True)
 plt.tight_layout()
 plt.savefig("reward_progress.png")
 plt.show()
-
-
-with open('5m_q_table.pkl', 'wb') as f:
-    pickle.dump(q_table, f)
