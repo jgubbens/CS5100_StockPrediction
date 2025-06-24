@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pattern_recognition import SupportResistanceCNN, load_datasets_from_directory, parse_ohlcv, normalize_ohlcv
 
+# 🔧 Global configuration
+SEQUENCE_LENGTH = 300  # Change this to adjust model + dataset input size
 
 def evaluate_model(model, dataset):
     dataloader = DataLoader(dataset, batch_size=32)
@@ -60,8 +62,8 @@ def predict_single_example(model, json_path):
     df = parse_ohlcv(json_data['ohlcv_data'])
     df_norm = normalize_ohlcv(df)
     features = df_norm[['open', 'high', 'low', 'close', 'volume']].values.T
-    x = features[:, -100:]
-    x_tensor = torch.tensor(x, dtype=torch.float32).unsqueeze(0) # shape (1, 5, 100)
+    x = features[:, -SEQUENCE_LENGTH:]
+    x_tensor = torch.tensor(x, dtype=torch.float32).unsqueeze(0)  # shape (1, 5, SEQUENCE_LENGTH)
 
     model.eval()
     with torch.no_grad():
@@ -75,6 +77,15 @@ def predict_single_example(model, json_path):
     levels = np.linspace(min_price, max_price, 100)
     top_indices = np.argsort(probs)[-5:][::-1]
 
+    print("\nGround Truth Horizontal Lines:")
+    for line in json_data['labels'].get('horizontal_lines', []):
+        line_type = line.get('type', 'unknown')
+        print(f"  Price = {line['price']:.2f}, Type = {line_type}")
+
+    print("\nGround Truth Ray Lines:")
+    for line in json_data['labels'].get('ray_lines', []):
+        print(f"From {line['start_date']} ({line['start_price']:.2f}) to {line['end_date']} ({line['end_price']:.2f})")
+
     print("Top Predicted Support/Resistance Levels:")
     for idx in top_indices:
         print(f"Level {idx}: Price = {levels[idx]:.2f}, Prob = {probs[idx]:.3f}")
@@ -85,15 +96,15 @@ def predict_single_example(model, json_path):
 
 if __name__ == "__main__":
     directory = "data/test"
-    print(f"Loading dataset from {directory} for evaluation...")
-    dataset = load_datasets_from_directory(directory, sequence_length=100)
+    print(f"Loading dataset from {directory} with SEQUENCE_LENGTH = {SEQUENCE_LENGTH}")
+    dataset = load_datasets_from_directory(directory, sequence_length=SEQUENCE_LENGTH)
     print(f"Loaded {len(dataset)} samples.")
 
-    model = SupportResistanceCNN(sequence_length=100)
-    model.load_state_dict(torch.load("support_resistance_cnn.pt"))
+    model = SupportResistanceCNN(sequence_length=SEQUENCE_LENGTH)
+    model.load_state_dict(torch.load(f"support_resistance_cnn_{SEQUENCE_LENGTH}candlesticks.pt"))
 
     evaluate_model(model, dataset)
-    # Predict on a single file
+
     sample_file = r"data/test/0b3167ff-9fe3-4f49-b6f7-2ee1f52e12ee.json"
     print(f"\nMaking prediction for: {sample_file}")
     predict_single_example(model, sample_file)

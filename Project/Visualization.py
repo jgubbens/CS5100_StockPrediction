@@ -60,8 +60,11 @@ app.layout = html.Div([
 
 def update_graph(n):
     end_idx = min(n + 1, total_ticks)
-    partial_5m = df_5m.iloc[:end_idx]
-    partial_4h = df_4h[df_4h.index <= partial_5m.index[-1]]
+    #partial_5m = df_5m.iloc[:end_idx]
+    #partial_4h = df_4h[df_4h.index <= partial_5m.index[-1]]
+    partial_5m = df_5m.iloc[max(0, end_idx - 300):end_idx]
+    partial_4h = df_4h[df_4h.index <= partial_5m.index[-1]].iloc[-300:]
+
 
     if partial_5m.empty:
         return go.Figure()
