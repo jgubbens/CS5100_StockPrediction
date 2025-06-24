@@ -22,7 +22,7 @@ class TradingEnv_5m(gym.Env):
         # action space [0: call, 1: short, 2: hold]
         self.action_space = spaces.Discrete(3)
 
-        # observation: [resistance_diff_pct, support_diff_pct, volume%, 4h_decition]
+        # observation: [resistance_diff_pct, support_diff_pct, volume%, 4h_decision]
         low = np.array([-np.inf, -np.inf, 0] + [0, 0, 0, 0], dtype=np.float32)
         high = np.array([np.inf, np.inf, 1] + [1, 1, 1, 1], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
@@ -65,7 +65,7 @@ class TradingEnv_5m(gym.Env):
         if state_d in self.q_table_4h:
             q_values = self.q_table_4h[state_d]
             probs = np.exp(q_values) / np.sum(np.exp(q_values))
-            action = np.argmax(probs) if np.max(probs) > 0.3 else 2
+            action = np.argmax(probs) if np.max(probs) > 0.4 else 2
         else:
             action = 2
 
@@ -138,8 +138,19 @@ class TradingEnv_5m(gym.Env):
 
         obs = self._get_observation()
         info = {'balance': self.balance, 'position': self.position}
+
+        if self.position == 0 and action in [0, 1]:
+            simulated_position = 1 if action == 0 else -1
+            simulated_reward = self._simulate_trade_until_close(self.current_step, self.df.iloc[self.current_step]['close'], simulated_position)
+        else:
+            simulated_reward = 0.0  # If already in position, don't simulate new one
+
+        reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)
         
-        reward = realized_reward + unrealized_reward
+        # reward = realized_reward + unrealized_reward
+        # future_reward = self._calculate_future_reward(10)
+        # reward = realized_reward + unrealized_reward + 0.95 * future_reward
+
 
         # calculate the reward for each step 
         '''
@@ -156,6 +167,45 @@ class TradingEnv_5m(gym.Env):
         '''
 
         return obs, reward, done, info
+    
+    def _calculate_future_reward(self, n):
+        future_steps = self.df.iloc[self.current_step : self.current_step + n]
+        if len(future_steps) == 0:
+            return 0.0
+    
+        future_prices = future_steps['close'].values
+        if self.position == 1:  # Long
+            returns = (future_prices - self.position_price) / self.position_price
+        elif self.position == -1:  # Short
+            returns = (self.position_price - future_prices) / self.position_price
+        else:
+            return 0.0
+
+        return np.max(returns)  # or np.mean(returns), or weighted
+    
+    def _calculate_reward_at_close(self):
+        return 0
+
+    def _simulate_trade_until_close(self, entry_step, entry_price, position):
+        stop_loss = self.stop_loss_pct
+        take_profit = self.take_profit_pct
+        df_len = len(self.df)
+
+        for i in range(entry_step + 1, df_len):
+            price = self.df.iloc[i]['close']
+            ret_pct = (price - entry_price) / entry_price
+            if position == -1:
+                ret_pct = -ret_pct
+
+            if ret_pct <= stop_loss or ret_pct >= take_profit:
+                return ret_pct  # SL or TP hit
+
+        # If never closed, return P/L at final price
+        final_price = self.df.iloc[-1]['close']
+        ret_pct = (final_price - entry_price) / entry_price
+        if position == -1:
+            ret_pct = -ret_pct
+        return ret_pct
 
     def _close_position(self, price):
         if self.position == 1:

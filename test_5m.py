@@ -8,17 +8,17 @@ import matplotlib.pyplot as plt
 with open("4h_q_table.pkl", "rb") as f:
     q_table_4h = pickle.load(f)
 
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2025-06-01T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2025-06-15T00:00:00Z', end_time='2025-06-20T00:00:00Z')
 df_4h['timestamp'] = df_4h.index
 df_4h.reset_index(drop=True, inplace=True)
 
-df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-01T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-15T00:00:00Z', end_time='2025-06-20T00:00:00Z')
 df_5m['timestamp'] = df_5m.index
 df_5m.reset_index(drop=True, inplace=True)
 
 env = TradingEnv_5m(df_5m, df_4h, q_table_4h)
 
-def discretize_state(state, bins=[10, 10, 10, 3, 4]):
+def discretize_state(state, bins=[10, 10, 10, 4]):
     return tuple(np.digitize(s, np.linspace(-1, 1, b)) for s, b in zip(state, bins))
 
 q_table = {}
@@ -26,10 +26,11 @@ q_update = {}
 gamma = 0.95
 episodes = 100
 reward_log = []
+epsilon = 1 
+decay_rate = 0.99
 
-for episode in range(10):
-    epsilon = 0.1 
-    decay_rate = 0.99
+
+for episode in range(episodes):
     state = env.reset()
     state_d = discretize_state(state)
     total_reward = 0
@@ -57,11 +58,15 @@ for episode in range(10):
 
         state_d = next_state_d
         total_reward += reward
-        epsilon = epsilon * decay_rate
+    epsilon = epsilon * decay_rate
 
     reward_log.append(total_reward)
     true_profit = info['balance'] - 100.0
-    print(f"Episode {episode+1}, Final Balance: {info['balance']:.2f}, Total Reward: {total_reward:.2f}, True PnL: {true_profit:.2f}")
+
+    if (episode + 1) % 10 == 0:
+        recent_rewards = reward_log[-10:]
+        reward_std = np.std(recent_rewards)
+        print(f"Episode {episode+1}, Final Balance: {info['balance']:.2f}, Total Reward: {total_reward:.2f}, True PnL: {true_profit:.2f}, StdDev (last 10): {reward_std:.2f}, Epsilon: {epsilon:.4f}")
 
 # plot the reward scatter graph
 plt.figure(figsize=(10, 5))
