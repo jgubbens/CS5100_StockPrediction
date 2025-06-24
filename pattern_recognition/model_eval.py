@@ -6,8 +6,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pattern_recognition import SupportResistanceCNN, load_datasets_from_directory, parse_ohlcv, normalize_ohlcv
 
-# 🔧 Global configuration
-SEQUENCE_LENGTH = 300  # Change this to adjust model + dataset input size
+SEQUENCE_LENGTH = 300
 
 def evaluate_model(model, dataset):
     dataloader = DataLoader(dataset, batch_size=32)

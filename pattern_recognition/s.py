@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import torch.nn as nn
 
-# ---- Model Definition ----
 class SupportResistanceCNN(nn.Module):
     def __init__(self, sequence_length=300):
         super().__init__()
@@ -29,7 +28,6 @@ class SupportResistanceCNN(nn.Module):
         r = self.fc_ray(x)
         return h, r
 
-# ---- Helper Functions ----
 def parse_ohlcv(ohlcv_data):
     df = pd.DataFrame(ohlcv_data)
     df['time'] = pd.to_datetime(df['time'])
@@ -61,7 +59,6 @@ def predict(model, x_tensor):
 def plot_prediction(df_full, levels, probs, last_close, file_name, gt_lines):
     fig, ax = plt.subplots(figsize=(14, 6))
 
-    # Plot all candlesticks
     for i in range(len(df_full)):
         o = df_full.loc[i, 'open']
         c = df_full.loc[i, 'close']
@@ -71,19 +68,18 @@ def plot_prediction(df_full, levels, probs, last_close, file_name, gt_lines):
         ax.plot([i, i], [l, h], color='black')
         ax.plot([i, i], [o, c], color=color, linewidth=2)
 
-    # Separate supports and resistances
     supports = [(i, p) for i, p in enumerate(probs) if levels[i] < last_close]
     resistances = [(i, p) for i, p in enumerate(probs) if levels[i] >= last_close]
 
     top_supports = sorted(supports, key=lambda x: x[1], reverse=True)[:5]
     top_resistances = sorted(resistances, key=lambda x: x[1], reverse=True)[:5]
 
-    # Plot predicted supports (dashed blue)
+    # Plot predicted supports
     for idx, prob in top_supports:
         price = levels[idx]
         ax.axhline(price, linestyle='--', color='blue', label=f"Predicted Support {idx}: {price:.2f} (p={prob:.2f})")
 
-    # Plot predicted resistances (dashed orange)
+    # Plot predicted resistances
     for idx, prob in top_resistances:
         price = levels[idx]
         ax.axhline(price, linestyle='--', color='orange', label=f"Predicted Resistance {idx}: {price:.2f} (p={prob:.2f})")
@@ -106,7 +102,6 @@ def plot_prediction(df_full, levels, probs, last_close, file_name, gt_lines):
     plt.show()
 
 
-# ---- Main ----
 if __name__ == "__main__":
     test_dir = "data/test"
     model_input_length = 300

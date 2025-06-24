@@ -11,7 +11,6 @@ from tqdm import tqdm
 
 SEQUENCE_LENGTH = 300
 
-# ---- Data Helpers ----
 def parse_ohlcv(ohlcv_data: List[Dict]) -> pd.DataFrame:
     df = pd.DataFrame(ohlcv_data)
     df['time'] = pd.to_datetime(df['time'])
@@ -27,9 +26,9 @@ def encode_horizontal_lines(df: pd.DataFrame, lines: List[Dict], num_levels=100)
     levels = np.linspace(min_price, max_price, num_levels)
 
     if not lines:
-        return -1  # No label present
+        return -1 # No label present
 
-    target_line = lines[0]['price']  # Use first line
+    target_line = lines[0]['price'] # Use first line
     idx = (np.abs(levels - target_line)).argmin()
     return idx
 
@@ -55,7 +54,7 @@ def encode_ray_lines(df: pd.DataFrame, rays: List[Dict]) -> np.ndarray:
 
     return price_targets
 
-# ---- Dataset ----
+# Data Definition
 class SupportResistanceDataset(Dataset):
     def __init__(self, json_data: Dict, sequence_length: int = 300):
         df = parse_ohlcv(json_data['ohlcv_data'])
@@ -80,7 +79,7 @@ class SupportResistanceDataset(Dataset):
         r = np.nan_to_num(r, nan=0.0)
         return torch.tensor(x, dtype=torch.float32), torch.tensor(self.h_class, dtype=torch.long), torch.tensor(r, dtype=torch.float32)
 
-# ---- Model ----
+# Model Definition
 class SupportResistanceCNN(nn.Module):
     def __init__(self, sequence_length: int = 300):
         super().__init__()
@@ -101,7 +100,7 @@ class SupportResistanceCNN(nn.Module):
         r = self.fc_ray(x)
         return h, r
 
-# ---- Data Loader ----
+# Data Loader
 def load_datasets_from_directory(directory: str, sequence_length: int = 300) -> ConcatDataset:
     datasets = []
     for filename in os.listdir(directory):
@@ -122,10 +121,14 @@ def load_datasets_from_directory(directory: str, sequence_length: int = 300) -> 
     print(f"Total files loaded: {len(datasets)}")
     return ConcatDataset(datasets)
 
-# ---- Training Loop ----
+# Training Loop
 def train_model(dataset: Dataset, epochs=10, batch_size=32):
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    model = SupportResistanceCNN(sequence_length=dataset.datasets[0].sequence_length if isinstance(dataset, ConcatDataset) else dataset.sequence_length)
+    if isinstance(dataset, ConcatDataset):
+        length = dataset.datasets[0].sequence_length
+    else:
+        length = dataset.dequence_length
+    model = SupportResistanceCNN(sequence_length=length)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion_h = nn.CrossEntropyLoss()
     criterion_r = nn.MSELoss()
@@ -153,7 +156,6 @@ def train_model(dataset: Dataset, epochs=10, batch_size=32):
 
     return model
 
-# ---- Main ----
 if __name__ == "__main__":
     directory = "data/train"
     print(f"Reading all JSON files from: {directory}")
