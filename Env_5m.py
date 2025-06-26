@@ -42,7 +42,7 @@ class TradingEnv_5m(gym.Env):
     # Method to reset the environment
     def reset(self):
         self.position = 0
-        self.current_step = 6 # start with 6 k bar to get the first SNR if using statistical SNR (does not affect CNN SNR)
+        self.current_step = 0 # start with 6 k bar to get the first SNR if using statistical SNR (does not affect CNN SNR)
         self.balance = 100.0
         self.position_price = 0.0
         self.sr_manager.reset_levels()
@@ -127,19 +127,34 @@ class TradingEnv_5m(gym.Env):
             else:
                 unrealized_reward = ret_pct
         
-        # action definition
-        if action == 0: # call
-            if self.position == 0:
-                self.position = 1
-                self.position_price = price
-                # print("Call Enter Price:", price)
+        # If agent chooses to enter a new position and is already in one → close first
+        if action in [0, 1] and self.position != 0:
+            realized_reward += self._close_position(price)
+
+        # Execute action
+        if action == 0:  # call / long
+            self.position = 1
+            self.position_price = price
         elif action == 1:  # short
-            if self.position == 0:
-                self.position = -1
-                self.position_price = price
-                # print("Short Enter Price:", price)
+            self.position = -1
+            self.position_price = price
         elif action == 2:  # hold
             pass
+
+        
+        # # action definition
+        # if action == 0: # call
+        #     if self.position == 0:
+        #         self.position = 1
+        #         self.position_price = price
+        #         # print("Call Enter Price:", price)
+        # elif action == 1:  # short
+        #     if self.position == 0:
+        #         self.position = -1
+        #         self.position_price = price
+        #         # print("Short Enter Price:", price)
+        # elif action == 2:  # hold
+        #     pass
 
         self.current_step += 1
         if self.current_step >= len(self.df) - 1:
@@ -165,7 +180,7 @@ class TradingEnv_5m(gym.Env):
         
         # reward = realized_reward + unrealized_reward
         # future_reward = self._calculate_future_reward(10)
-        reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)
+        # reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)
 
         return obs, reward, done, info
     

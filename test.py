@@ -37,7 +37,7 @@ for episode in range(episodes):
     state_d = discretize_state(state)
     total_reward = 0
     done = False
-    info = {'balance':100, 'position': 0}
+    # info = {'balance':100, 'position': 0}
 
 
     while not done:
@@ -48,19 +48,20 @@ for episode in range(episodes):
 
         # Block agent from changing position prior to a close
         # This is not possible in the real market (e.g. you cannot change to a short from a call once the order has been placed)
-        if info["position"] != 0:
-            action = 2
-            while info["position"] != 0 :
-                next_state, reward, done, info = env.step(action)
+        # if info["position"] != 0:
+        #     action = 2
+        #     while info["position"] != 0 :
+        #         next_state, reward, done, info = env.step(action)
 
         # Choose a random action if random action probability is higher than epsilon        
-        elif np.random.rand() < epsilon and info["position"] == 0:
+        if np.random.rand() < epsilon: # and info["position"] == 0:
             action = env.action_space.sample()
-            next_state, reward, done, info = env.step(action)
+            # next_state, reward, done, info = env.step(action)
         # Otherwise use q table
         else:
             action = np.argmax(q_table[state_d])
-            next_state, reward, done, info = env.step(action)
+        
+        next_state, reward, done, info = env.step(action)
 
         # Get the next observation and discreteize it
         next_state_d = discretize_state(next_state)

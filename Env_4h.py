@@ -98,6 +98,10 @@ class TradingEnv_4h(gym.Env):
             else:
                 unrealized_reward = ret_pct
 
+        # If agent chooses to enter a new position and is already in one → close first
+        # if action in [0, 1] and self.position != 0:
+        #     realized_reward += self._close_position(price)
+
         # Execute action
         if action == 0:  # call / long
             self.position = 1

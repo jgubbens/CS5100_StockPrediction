@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import os
 
 
-with open("4h_q_table.pkl", "rb") as f:
+with open("future_4h_q_table.pkl", "rb") as f:
     q_table_4h = pickle.load(f)
 
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2022-01-01T00:00:00Z', end_time='2022-06-10T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2025-06-25T00:00:00Z', end_time='2025-06-26T00:00:00Z')
 df_4h['timestamp'] = df_4h.index
 df_4h.reset_index(drop=True, inplace=True)
 
-df_5m = fetch_binanceus_ohlcv('BTC/USDT', '5m', start_time='2022-01-01T00:00:00Z', end_time='2022-06-10T00:00:00Z')
+df_5m = fetch_binanceus_ohlcv('BTC/USDT', '5m', start_time='2025-06-25T00:00:00Z', end_time='2025-06-26T00:00:00Z')
 df_5m['timestamp'] = df_5m.index
 df_5m.reset_index(drop=True, inplace=True)
 
@@ -47,8 +47,8 @@ reward_log = []
 epsilon = 0 
 decay_rate = 0.99
 
-if os.path.exists("5m_q_table.pkl"):
-    with open("5m_q_table.pkl", "rb") as f:
+if os.path.exists("future_4h_q_table.pkl"):
+    with open("future_4h_q_table.pkl", "rb") as f:
         q_table = pickle.load(f)
         # Also initialize q_update keys
         for state in q_table:
