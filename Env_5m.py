@@ -3,26 +3,29 @@ import gym
 from gym import spaces
 from SNR_function import SupportResistanceManager
 
+# Class to simulate the stock and/or trading crypto market for 5 minute candlesticks
 class TradingEnv_5m(gym.Env):
     def __init__(self, df_5m, df_4h, q_table_4h):
         super().__init__()
 
+        # Attributes from the 4 hour table
         self.df_4h = df_4h.reset_index(drop=True)
         self.df = df_5m.reset_index(drop=True)
         self.max_volume = self.df['volume'].max()
         self.max_volume_4h = self.df_4h['volume'].max()
-
         self.q_table_4h = q_table_4h
+
+        # Initialize support and resistance line manager 
         self.sr_manager = SupportResistanceManager()
         self.sr_manager.calculate_levels(self.df)
 
         self.sr_manager_4h = SupportResistanceManager()
         self.sr_manager_4h.calculate_levels(self.df_4h)
 
-        # action space [0: call, 1: short, 2: hold]
+        # Action space [0: call, 1: short, 2: hold]
         self.action_space = spaces.Discrete(3)
 
-        # observation: [resistance_diff_pct, support_diff_pct, volume%, 4h_decision]
+        # Observation space: [resistance_diff_pct, support_diff_pct, volume%, 4h_decision]
         low = np.array([-np.inf, -np.inf, 0] + [0, 0, 0, 0], dtype=np.float32)
         high = np.array([np.inf, np.inf, 1] + [1, 1, 1, 1], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
@@ -34,20 +37,25 @@ class TradingEnv_5m(gym.Env):
         self.stop_loss_pct = -0.02 # Stop loss at -2%
         self.take_profit_pct = 0.02 # Target Price at +2%
 
+        self.trade_count = 0
+
+    # Method to reset the environment
     def reset(self):
         self.position = 0
-        self.current_step = 6 # start with 6 k bar to get the first SNR
+        self.current_step = 6 # start with 6 k bar to get the first SNR if using statistical SNR (does not affect CNN SNR)
         self.balance = 100.0
         self.position_price = 0.0
         self.sr_manager.reset_levels()
+        self.trade_count = 0
         return self._get_observation()
 
-    def discretize_state(self, state, bins=[10, 10, 10]):
+    # Likely can remove - occurs in training
+    def discretize_state(self, state, bins=[10, 10, 10, 3]):
         # bucket
         return tuple(np.digitize(s, np.linspace(-1, 1, b)) for s, b in zip(state, bins))
 
+    # Get the 4hr state
     def _get_4h_state(self, row):
-        # get 4hr state
         price = row['close']
         volume = row['volume']
         support = self.sr_manager_4h.get_closest_support(price)
@@ -57,6 +65,7 @@ class TradingEnv_5m(gym.Env):
         volume_pct = volume / self.max_volume_4h if self.max_volume_4h != 0 else 0.0
         return np.array([support_pct, resistance_pct, volume_pct, self.position])
 
+    # Predict the 4h action and one hot encode it
     def _predict_4h_action(self, timestamp):
         row_4h = self.df_4h[self.df_4h['timestamp'] <= timestamp].iloc[-1]
         state = self._get_4h_state(row_4h)
@@ -73,6 +82,8 @@ class TradingEnv_5m(gym.Env):
         one_hot[action] = 1
         return one_hot
 
+    # Getting observations from state with the help of the support and resistance manager
+    # as well as the one hot encoded 4hr state
     def _get_observation(self):
         row = self.df.iloc[self.current_step]
         price = row['close']
@@ -137,38 +148,29 @@ class TradingEnv_5m(gym.Env):
                 realized_reward += self._close_position(price) # close all the position before epoch ends
 
         obs = self._get_observation()
-        info = {'balance': self.balance, 'position': self.position}
+        info = {'balance': self.balance, 'position': self.position, 'trade_count': self.trade_count}
 
+
+        # Reward calculation:
+        # Refer to Env_4h.py for different reward calculations used in training
+
+        # Integration of the _simulate_trade_until_close method in our step function
         if self.position == 0 and action in [0, 1]:
             simulated_position = 1 if action == 0 else -1
             simulated_reward = self._simulate_trade_until_close(self.current_step, self.df.iloc[self.current_step]['close'], simulated_position)
         else:
             simulated_reward = 0.0  # If already in position, don't simulate new one
 
-        reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)
+        reward = realized_reward
         
         # reward = realized_reward + unrealized_reward
         # future_reward = self._calculate_future_reward(10)
-        # reward = realized_reward + unrealized_reward + 0.95 * future_reward
-
-
-        # calculate the reward for each step 
-        '''
-        We need to tune this part
-        
-        reward = realized_reward + unrealized_reward
-
-        obs = self._get_observation()
-        info = {
-            'balance': self.balance,
-            'position': self.position,
-            'position_price': self.position_price
-        }
-        '''
+        reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)
 
         return obs, reward, done, info
     
-    def _calculate_future_reward(self, n):
+    # A lookahead feature for training - checks proft at next 'n' steps
+    def _simulate_trade_for_n_steps(self, n):
         future_steps = self.df.iloc[self.current_step : self.current_step + n]
         if len(future_steps) == 0:
             return 0.0
@@ -182,10 +184,8 @@ class TradingEnv_5m(gym.Env):
             return 0.0
 
         return np.max(returns)  # or np.mean(returns), or weighted
-    
-    def _calculate_reward_at_close(self):
-        return 0
 
+    # A lookahead feature used in training - checks profit at next close
     def _simulate_trade_until_close(self, entry_step, entry_price, position):
         stop_loss = self.stop_loss_pct
         take_profit = self.take_profit_pct
@@ -207,6 +207,7 @@ class TradingEnv_5m(gym.Env):
             ret_pct = -ret_pct
         return ret_pct
 
+    # Method to close the position
     def _close_position(self, price):
         if self.position == 1:
             profit = ((price - self.position_price)/self.position_price) * self.balance * 0.1
@@ -217,4 +218,7 @@ class TradingEnv_5m(gym.Env):
         self.balance += profit
         self.position = 0
         self.position_price = 0.0
+
+        self.trade_count += 1
+
         return profit

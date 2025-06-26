@@ -9,18 +9,35 @@ import os
 with open("4h_q_table.pkl", "rb") as f:
     q_table_4h = pickle.load(f)
 
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2024-01-01T00:00:00Z', end_time='2024-12-31T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2022-01-01T00:00:00Z', end_time='2022-06-10T00:00:00Z')
 df_4h['timestamp'] = df_4h.index
 df_4h.reset_index(drop=True, inplace=True)
 
-df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2024-01-01T00:00:00Z', end_time='2024-12-31T00:00:00Z')
+df_5m = fetch_binanceus_ohlcv('BTC/USDT', '5m', start_time='2022-01-01T00:00:00Z', end_time='2022-06-10T00:00:00Z')
 df_5m['timestamp'] = df_5m.index
 df_5m.reset_index(drop=True, inplace=True)
 
 env = TradingEnv_5m(df_5m, df_4h, q_table_4h)
 
-def discretize_state(state, bins=[10, 10, 10, 4]):
-    return tuple(np.digitize(s, np.linspace(-1, 1, b)) for s, b in zip(state, bins))
+# def discretize_state(state, bins=[10, 10, 10, 4]):
+#     return tuple(np.digitize(s, np.linspace(-1, 1, b)) for s, b in zip(state, bins))
+
+def discretize_state(state, bins_continuous=[10, 10, 10]):
+    # Unpack 5m continuous features
+    support_5m, resistance_5m, volume_5m = state[:3]
+    # 4h action one-hot vector
+    action_4h_onehot = state[3:]
+
+    # Discretize continuous values to bins 0..bins_continuous[i]
+    support_bin = np.digitize(support_5m, np.linspace(-1, 1, bins_continuous[0]))
+    resistance_bin = np.digitize(resistance_5m, np.linspace(-1, 1, bins_continuous[1]))
+    volume_bin = np.digitize(volume_5m, np.linspace(0, 1, bins_continuous[2]))
+
+    # Convert 4h one-hot vector to discrete action (0,1,2,3)
+    action_4h_bin = np.argmax(action_4h_onehot)  # value from 0 to 3
+
+    # Return combined discrete state tuple
+    return (support_bin, resistance_bin, volume_bin, action_4h_bin)
 
 q_table = {}
 q_update = {}
@@ -53,6 +70,8 @@ for episode in range(episodes):
             action = env.action_space.sample()
         else:
             action = np.argmax(q_table[state_d])
+            # if action != 0:
+                # print(action)
         next_state, reward, done, info = env.step(action)
         next_state_d = discretize_state(next_state)
 
