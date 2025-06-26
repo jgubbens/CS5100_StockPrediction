@@ -1,0 +1,16 @@
+dash==3.0.4
+flask==3.0.3
+gym==0.26.2
+gymnasium==0.29.1
+matplotlib==3.8.0
+numpy==1.26.4
+pandas==2.2.3
+plotly==6.1.2
+scipy==1.14.1
+tensorflow==2.14.0
+torch==2.2.2
+torchaudio==2.2.2
+torchvision==0.16.1
+tqdm==4.65.0
+opencv-python==4.10.0.84
+ccxt==4.4.90
