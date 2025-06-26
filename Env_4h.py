@@ -99,8 +99,8 @@ class TradingEnv_4h(gym.Env):
                 unrealized_reward = ret_pct
 
         # If agent chooses to enter a new position and is already in one → close first
-        # if action in [0, 1] and self.position != 0:
-        #     realized_reward += self._close_position(price)
+        if action in [0, 1] and self.position != 0:
+            realized_reward += self._close_position(price)
 
         # Execute action
         if action == 0:  # call / long
@@ -126,14 +126,14 @@ class TradingEnv_4h(gym.Env):
         else:
             simulated_reward = 0.0  # If already in position, don't simulate new one
 
-        # Reward calculation 
+        # Reward calculation - uncomment the version you would like to use:
         # - Unrealized_reward and simulated_reward were utilized in training, effectively allowing our agent to "cheat"
         # and look ahead. 
         # - In actual simulation, only realized reward matters - cannot look ahead in real time market
 
         # For n steps: 
         # n_steps = self._simulate_trade_for_n_steps(10)
-        # reward = realized_reward + unrealized_reward + (0.95 * frs)
+        # reward = realized_reward + unrealized_reward + (0.95 * n_steps)
 
         # For simulate until close:
         reward = realized_reward + unrealized_reward + (0.95 * simulated_reward)

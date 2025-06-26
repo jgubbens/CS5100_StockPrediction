@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 with open("4h_q_table.pkl", "rb") as f:
     q_table_4h = pickle.load(f)
 
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2024-01-01T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2024-01-01T00:00:00Z', end_time='2024-12-31T00:00:00Z')
 df_4h['timestamp'] = df_4h.index
 df_4h.reset_index(drop=True, inplace=True)
 
-df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-21T00:00:00Z', end_time='2025-06-24T00:00:00Z')
+df_5m = fetch_binanceus_ohlcv('SOL/USDT', '5m', start_time='2025-06-20T00:00:00Z', end_time='2025-06-20T00:00:00Z')
 df_5m['timestamp'] = df_5m.index
 df_5m.reset_index(drop=True, inplace=True)
 
@@ -123,6 +123,6 @@ plt.show()
 # with open('5m_q_table.pkl', 'wb') as f:
 #     pickle.dump(q_table, f)
 
-# Storing Q-table with the lookaheads in training
-with open('future_4h_q_table.pkl', 'wb') as f:
+# Storing Q-table with the lookaheads in training - 'future_4h_q_table.pkl'
+with open('future_5m_q_table.pkl', 'wb') as f:
     pickle.dump(q_table, f)

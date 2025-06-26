@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 
 # Fetch data from Binance API
-df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2024-01-01T00:00:00Z', end_time='2025-06-20T00:00:00Z')
+df_4h = fetch_binanceus_ohlcv('SOL/USDT', '4h', start_time='2024-01-01T00:00:00Z', end_time='2024-12-31T00:00:00Z')
 
 # Initializae trading environment
 env = TradingEnv_4h(df_4h)
