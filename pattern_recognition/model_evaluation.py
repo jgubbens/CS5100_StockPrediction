@@ -83,18 +83,6 @@ def plot_prediction(df_full, levels, probs, last_close, file_name, gt_lines):
     for idx, prob in top_resistances:
         price = levels[idx]
         ax.axhline(price, linestyle='--', color='orange', label=f"Predicted Resistance {idx}: {price:.2f} (p={prob:.2f})")
-    '''
-    # Plot ground truth horizontal lines
-    for line in gt_lines:
-        price = line['price']
-        ltype = line.get('type', '').lower()
-        if ltype == 'support':
-            color = 'blue'
-        elif ltype == 'resistance':
-            color = 'orange'
-        else:
-            color = 'gray'
-        ax.axhline(price, linestyle='-', color=color, linewidth=2, label=f"GT {ltype.capitalize()} @ {price:.2f}")'''
 
     ax.set_xlabel("Candle Index")
     ax.set_ylabel("Price")

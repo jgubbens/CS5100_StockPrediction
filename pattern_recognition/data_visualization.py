@@ -44,7 +44,6 @@ def plot_candlesticks(df, horizontal_lines=None, ray_lines=None, title="Candlest
     plt.tight_layout()
     plt.show()
 
-# ---- Load and Plot ----
 if __name__ == "__main__":
     json_path = "data/test/0b3167ff-9fe3-4f49-b6f7-2ee1f52e12ee.json"
 
